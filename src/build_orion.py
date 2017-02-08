@@ -100,18 +100,23 @@ class Constellation(object):
     def get_star(self, index):
         return self.stars[index]
 
+    def generate_select_in_parts(self, selection_ids):
+        sql_keys = []
+        sql_data = {}
+        for i, s in enumerate(selection_ids):
+            key = 'i{}'.format(i)
+            sql_keys.append(':{}'.format(key))
+            sql_data[key] = s
+
+        sql_str = "id in ({})".format(",".join(sql_keys))
+
+        return sql_str, sql_data
+
     def selection_sql(self, selection=None):
         sql_str = None
         sql_data = None
         if selection:
-            sql_keys = []
-            sql_data = {}
-            for i, s in enumerate(selection):
-                key = 's{}'.format(i)
-                sql_keys.append(':'+key)
-                sql_data[key] = s
-
-            sql_str = "id in ({})".format(",".join(sql_keys))
+            sql_str, sql_data = self.generate_select_in_parts(selection)
         else:
             sql_str = '''
             constellation = :con AND
@@ -218,9 +223,6 @@ class Constellation(object):
             x = delta_ra / sin(decC)
             y = dec - decC
             self.stars[s].projected = (x, y)
-
-
-
 
 
 if __name__ == '__main__':
