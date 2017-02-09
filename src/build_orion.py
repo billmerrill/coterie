@@ -1,24 +1,24 @@
 from math import sin, cos, sqrt, radians, degrees
 import sqlite3
+import subprocess
+
+from vrml_model import Constellation3DModel
 
 CONFIG = {
     'star_db': "../data/sc_db/stars.db"
 }
 
-
 class ConstellationModel(object):
 
-    def __init__(self, constellation=None, stars=None, lines=None):
+    def __init__(self, constellation=None, featured_stars=None):
         self.constellation = constellation
-        self.stars = stars
-        self.lines = lines
+        self.featured_stars = featured_stars
 
     def chart2D(self):
         # cons, stars, connections):
         star_x = []
         star_y = []
         for s in sorted(self.constellation.stars):
-            print(self.constellation.stars[s].key)
             projected = self.constellation.stars[s].projected
             if projected:
                 star_x.append(projected[0])
@@ -31,7 +31,7 @@ class ConstellationModel(object):
         p = figure(plot_width=800, plot_height=800, title='orion')
         p.toolbar.active_scroll = WheelZoomTool()
         for star in self.constellation.stars.values():
-            if star.hyg_id in self.stars:
+            if self.featured_stars and star.hyg_id in self.featured_stars:
                 circle_color = "#000000"
             else:
                 circle_color = "#cccccc"
@@ -40,7 +40,7 @@ class ConstellationModel(object):
             p.add_layout(Label(x=star.projected[0], y=star.projected[1],
                                text="{}:{} {:.2f}".format(star.hyg_id, star.key,
                                star.magnitude), text_color="#999999"))
-        for connection in self.lines:
+        for connection in self.constellation.connections:
             a = self.constellation.get_star(connection[0])
             b = self.constellation.get_star(connection[1])
             glyph = Segment(x0=a.projected[0], y0=a.projected[1], x1=b.projected[0],
@@ -87,6 +87,7 @@ class Constellation(object):
         self.abbreviation = abbreviation
         self.stars = {}
         self.magnitude_filter = mag
+        self.connections = []
 
     def __str__(self):
         stars = []
@@ -127,7 +128,23 @@ class Constellation(object):
 
         return sql_str, sql_data
 
-    def load_from_sqlite(self, star_db_file, selection=None):
+    def set_connections(self, connections):
+        '''
+        Accept a list of tuples defining lines between
+        stars in a representation of the constellation
+        '''
+        self.connections = connections
+
+    def load_stars_from_sqlite(self, star_db_file, selection=None):
+        '''
+        load star data via one of two modes:
+        * Constellation
+        Use the abbreviate and magnitfude to filter stars from the
+        constellation area.
+        * Selection
+        Load star data based on the 'selection' list containing
+        ids of stars selected for a models.
+        '''
         conn = sqlite3.connect(star_db_file)
         conn.row_factory = sqlite3.Row
 
@@ -151,11 +168,7 @@ class Constellation(object):
 
         sql = sql.format(selection_sql=selection_sql)
 
-        print(sql)
-        print(selection_data)
-
         for row in conn.execute(sql, selection_data):
-            print(row['ra'], row['dec'])
             self.add_star(ConstellationPoint(row['id'], row['designation'],
                                              row['proper_name'], row['ra'],
                                              row['dec'], row['distance'],
@@ -197,7 +210,6 @@ class Constellation(object):
         raC = radians(raC * 15)
         decC = radians(decC)
 
-        print("print center", raC, decC)
         for star in self.stars.values():
             ra = radians(star.ra * 15)
             dec = radians(star.dec)
@@ -224,6 +236,31 @@ class Constellation(object):
             y = dec - decC
             self.stars[s].projected = (x, y)
 
+def chart_pictogram(abr, orion_points, orion_lines):
+    orion = Constellation(abr, CONFIG, mag=5)
+    orion.load_stars_from_sqlite(CONFIG['star_db'], selection=orion_points)
+    orion.set_connections(orion_lines)
+    orion.project()
+    orion_model = ConstellationModel(constellation=orion, featured_stars=orion_points)
+    orion_model.chart2D()
+
+def chart_with_starfield(abr, orion_points, orion_lines):
+    orion = Constellation(abr, CONFIG, mag=5)
+    orion.load_stars_from_sqlite(CONFIG['star_db'])
+    orion.set_connections(orion_lines)
+    orion.project()
+    orion_model = ConstellationModel(constellation=orion, featured_stars=orion_points)
+    orion_model.chart2D()
+
+def build_vrml_model(abr, orion_points, orion_lines):
+    orion = Constellation(abr, CONFIG, mag=5)
+    orion.load_stars_from_sqlite(CONFIG['star_db'], selection=orion_points)
+    orion.set_connections(orion_lines)
+    orion.project()
+    orion_3d_model = Constellation3DModel(orion, CONFIG)
+    orion_3d_model.build_vrml()
+    subprocess.call( ["/usr/bin/open", "stars.wrl"] )
+
 
 if __name__ == '__main__':
 
@@ -239,9 +276,11 @@ if __name__ == '__main__':
                    (29353, 28966), (29353, 28645), (28966, 27844), (28645, 27844),
                    (25273, 25865)]
 
-    orion = Constellation(abr, CONFIG, mag=5)
-    orion.load_from_sqlite(CONFIG['star_db'], selection=orion_points)
-    orion.project()
-    print(orion)
-    orion_model = ConstellationModel(constellation=orion, stars=orion_points, lines=orion_lines)
-    orion_model.chart2D()
+    displays = {
+        'starfield': chart_with_starfield,
+        'pictograph': chart_pictogram,
+        'vrml': build_vrml_model
+    }
+
+    build = 'vrml'
+    displays[build](abr, orion_points, orion_lines)
