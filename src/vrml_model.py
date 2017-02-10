@@ -10,6 +10,7 @@ class ModelConfig(object):
 
     def __init__(self):
         self.size_mm = [100, 100, 100]
+        self.preserve_aspect_ratio = True
         self.min_thickness_mm = [3, 3, 3]
 
 
@@ -41,10 +42,15 @@ class Constellation3DModel(object):
         starfield_range = self.constellation.get_range()
         spans = [x[1]-x[0] for x in starfield_range]
 
-        x_scalar = self.model_config.size_mm[PX] / spans[PX]
         distance_scalar = self.model_config.size_mm[PY] / spans[PY]
+
+        x_scalar = self.model_config.size_mm[PX] / spans[PX]
         z_scalar = self.model_config.size_mm[PZ] / spans[PZ]
-        print( [x_scalar, distance_scalar, z_scalar])
+
+        # lock aspect ratio
+        if self.model_config.preserve_aspect_ratio:
+            x_scalar = z_scalar = min(x_scalar, z_scalar)
+
         return [x_scalar, distance_scalar, z_scalar]
 
     def build_vrml(self):
