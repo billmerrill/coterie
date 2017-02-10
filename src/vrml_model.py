@@ -38,15 +38,13 @@ class Constellation3DModel(object):
         self.constellation = constellation
 
     def get_star_scalar(self):
-        # base is x and z
+        starfield_range = self.constellation.get_range()
+        spans = [x[1]-x[0] for x in starfield_range]
 
-
-
-        star_span = self.constellation.max_distance - \
-            self.constellation.min_distance
-        distance_scalar = self.model_config.size_mm[PY] / star_span
-        x_scalar = 20.0
-        z_scalar = 20.0
+        x_scalar = self.model_config.size_mm[PX] / spans[PX]
+        distance_scalar = self.model_config.size_mm[PY] / spans[PY]
+        z_scalar = self.model_config.size_mm[PZ] / spans[PZ]
+        print( [x_scalar, distance_scalar, z_scalar])
         return [x_scalar, distance_scalar, z_scalar]
 
     def build_vrml(self):
@@ -55,4 +53,5 @@ class Constellation3DModel(object):
         for star in self.constellation.stars.values():
             canvas.add_element(VRMLStar(star, star_scalar))
 
-        canvas.write_vrml(self.output_filename, show_axes=False)
+        canvas.write_vrml(self.output_filename, show_axes=False,
+                          header_values={'viewpoint_y': 2*self.model_config.size_mm[PY]})

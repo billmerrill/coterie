@@ -1,5 +1,10 @@
+
 from math import sin, cos, sqrt, radians, degrees
 import sqlite3
+
+import numpy as np
+
+from indicies import *
 
 class ConstellationPoint(object):
 
@@ -26,6 +31,19 @@ class ConstellationPoint(object):
     def index(self):
         return self.hyg_id
 
+    def get_xyz_ish(self):
+        '''
+        For Constellation Models:
+        x = projected x
+        y = distance from earth in parsecs
+        z = projected y
+        Using distance as Y like ElevationGrid uses Y
+        '''
+        if not self.projected:
+            return False
+
+        return [self.projected[PX], self.distance, self.projected[PY]]
+
     def __str__(self):
         return "<ConstellationPoint {:10} ra:{:8} dec:{:10} projection:{}>" \
             .format(self.key, self.ra, self.dec, self.projected)
@@ -51,6 +69,12 @@ class Constellation(object):
 
     def get_star(self, index):
         return self.stars[index]
+
+    def get_range(self):
+        positions = np.array([x.get_xyz_ish() for x in self.stars.values()])
+        return [(np.min(positions[:, PX]), np.max(positions[:, PX])),
+                (np.min(positions[:, PY]), np.max(positions[:, PY])),
+                (np.min(positions[:, PZ]), np.max(positions[:, PZ]))]
 
     def generate_select_in_parts(self, selection_ids):
         sql_keys = []
@@ -125,39 +149,18 @@ class Constellation(object):
                                              row['dec'], row['distance'],
                                              row['magnitude']))
 
-        sql = '''
-        SELECT
-        min(distance) as min_distance,
-        max(distance) as max_distance
-        FROM stars WHERE
-        {selection_sql}
-        '''
-        sql = sql.format(selection_sql=selection_sql)
-        cur = conn.execute(sql, selection_data)
-        row = cur.fetchone()
-        self.min_distance = row['min_distance']
-        self.max_distance = row['max_distance']
-
     def find_center(self):
-        min_ra = 500
-        max_ra = -500
-        min_dec = 100
-        max_dec = -100
-        for star in self.stars.values():
-            if star.ra < min_ra:
-                min_ra = star.ra
-            if star.ra > max_ra:
-                max_ra = star.ra
-            if star.dec < min_dec:
-                min_dec = star.dec
-            if star.dec > max_dec:
-                max_dec = star.dec
+        '''
+        find the middle ra and ec for the starfield_range
+        return mid_ra, mid_dec
+        '''
 
-        mid_ra = (max_ra - min_ra) / 2
-        mid_dec = (max_dec - min_dec) / 2
-
-        # return max_ra + mid_ra, max_dec + mid_dec
-        return min_ra + mid_ra, min_dec + mid_dec
+        angles = np.array([[x.ra, x.dec] for x in self.stars.values()])
+        stats = np.ndarray(shape=(2, 2))
+        stats[0] = np.amin(angles, 0)
+        stats[1] = np.amax(angles, 0)
+        mids = np.average(stats, axis=0)
+        return mids[0], mids[1]
 
     def project(self):
         '''

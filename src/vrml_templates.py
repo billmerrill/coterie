@@ -3,7 +3,7 @@
 
 Header  = '''#VRML V2.0 utf8
  Viewpoint {
-          position    0 -20 0	#the camera positioned to X=0, Y=0 and Z=10
+          position    0 -$viewpoint_y 0	#the camera positioned to X=0, Y=0 and Z=10
           orientation 1 0 0 1.57	#"default" orientation
           description "top"	#the name of the view,
       }
