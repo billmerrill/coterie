@@ -97,22 +97,13 @@ class VRMLStarPillar(VRMLStar):
 
 class VRMLConstellationConnection(object):
 
-    def __init__(self, star_scalar, p1, p2, radius=1):
+    def __init__(self, p1, p2, radius=1):
         '''
         p1, p2, the model coordinates of the endpints for the connection
         '''
-        self.star_scalar = star_scalar
         self.p1 = np.array(p1)
         self.p2 = np.array(p2)
         self.radius = radius
-
-    def _get_z_only_rot_quad(self):
-        z_rot = math.atan(
-            abs(self.p1[PZ] - self.p2[PZ]) / abs(self.p1[PX] - self.p2[PX]))
-        if ((self.p1[PZ] - self.p2[PZ]) / (self.p1[PX] - self.p2[PX])) < 0:
-            z_rot *= -1
-        quad = "-1 0 0 {}".format(z_rot)  # rotate to points
-        return quad
 
     def _get_full_rot_quad(self, height):
         xr = (self.p2[PX] - self.p1[PX]) / height
@@ -123,60 +114,12 @@ class VRMLConstellationConnection(object):
         return quad
 
     def get_vrml(self):
-
-        connection_vrml = '''
-    # a simple rotation connection
-    Transform {
-        translation $tx $ty $tz
-        rotation 0 0 1 1.57080 # lay down on the xz plane
-        children [
-            Transform {
-                rotation $rot_quad
-                children [
-                    Shape{
-                        appearance Appearance{
-                            material Material { }
-                        }
-                        geometry Cylinder {
-                            height $height
-                            radius $radius
-                        }
-                    }
-                ]
-            }
-        ]
-    }
-'''
-
-        single_rot_connection_vrml = '''
-    # a full rotation connection
-    Transform {
-        translation $tx $ty $tz
-        rotation $rot_quad
-            children [
-                Shape{
-                    appearance Appearance{
-                        material Material { }
-                    }
-                    geometry Cylinder {
-                        height $height
-                        radius $radius
-                    }
-                }
-            ]
-        }
-'''
-
         midpoint = (self.p1 + self.p2) / 2
         height = np.linalg.norm(self.p1 - self.p2)
         rot_quad = self._get_full_rot_quad(height)
-        connection_vrml = Template(connection_vrml).substitute(
+        connection_vrml = Template(vrml_templates.StarConnection).substitute(
             height=height, radius=self.radius, tx=midpoint[PX], ty=midpoint[PY], tz=midpoint[PZ], rot_quad=rot_quad)
-        single_rot_connection_vrml = Template(single_rot_connection_vrml).substitute(
-            height=height, radius=self.radius, tx=midpoint[PX], ty=midpoint[PY], tz=midpoint[PZ], rot_quad=rot_quad)
-        print(height, self.radius, midpoint[
-              PX], midpoint[PY], midpoint[PZ], rot_quad)
-        return single_rot_connection_vrml
+        return connection_vrml
         # return connection_vrml
 
 
@@ -267,7 +210,7 @@ class ConstellationStackedModel(ConstellationStarfieldModel):
             sp1 = s1.get_xyz_ish() * star_scalar
             sp2 = s2.get_xyz_ish() * star_scalar
             canvas.add_element(VRMLConstellationConnection(
-                star_scalar, sp1, sp2, self.model_config.star_connection_radius))
+                sp1, sp2, self.model_config.star_connection_radius))
 
             p1, p2 = self.constellation.get_connection_positions(connection)
 
@@ -280,7 +223,7 @@ class ConstellationStackedModel(ConstellationStarfieldModel):
                   p2[1] * star_scalar[PZ]
                   ]
             canvas.add_element(VRMLConstellationConnection(
-                star_scalar, p1, p2, self.model_config.base_connection_radius))
+                p1, p2, self.model_config.base_connection_radius))
 
         canvas.write_vrml(self.output_filename, show_axes=False,
                           header_values={'viewpoint_y': 2 * self.model_config.size_mm[PY]})

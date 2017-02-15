@@ -47,6 +47,24 @@ Transform {
 }
 '''
 
+StarConnection = '''
+Transform {
+    translation $tx $ty $tz
+    rotation $rot_quad
+        children [
+            Shape{
+                appearance Appearance{
+                    material Material { }
+                }
+                geometry Cylinder {
+                    height $height
+                    radius $radius
+                }
+            }
+        ]
+    }
+'''
+
 
 TerrainIndexedFaceSet =''' Shape {
     # $comment
