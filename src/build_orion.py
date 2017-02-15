@@ -3,7 +3,7 @@ import subprocess
 
 from constellation import Constellation
 from constellation_chart import ConstellationChart
-from vrml_model import Constellation3DModel, ModelConfig
+from vrml_model import *
 
 CONFIG = {
     'star_db': "../data/sc_db/stars.db"
@@ -33,7 +33,16 @@ def build_vrml_model(abr, orion_points, orion_lines):
     orion.load_stars_from_sqlite(CONFIG['star_db'], selection=orion_points)
     orion.set_connections(orion_lines)
     orion.project()
-    orion_3d_model = Constellation3DModel(orion, ModelConfig())
+    orion_3d_model = ConstellationStarfieldModel(orion, ModelConfig())
+    orion_3d_model.build_vrml()
+    subprocess.call(["/usr/bin/open", "stars.wrl"])
+
+def build_stacked_model(abr, orion_points, orion_lines):
+    orion = Constellation(abr, CONFIG, mag=5)
+    orion.load_stars_from_sqlite(CONFIG['star_db'], selection=orion_points)
+    orion.set_connections(orion_lines)
+    orion.project()
+    orion_3d_model = ConstellationStackedModel(orion, ModelConfig())
     orion_3d_model.build_vrml()
     subprocess.call(["/usr/bin/open", "stars.wrl"])
 
@@ -54,10 +63,11 @@ def build_orion():
     displays = {
         'starfield': chart_with_starfield,
         'pictograph': chart_pictogram,
-        'vrml': build_vrml_model
+        'vrml': build_vrml_model,
+        'stacked': build_stacked_model
     }
 
-    build = 'vrml'
+    build = 'stacked'
     displays[build](abr, orion_points, orion_lines)
 
 

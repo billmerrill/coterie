@@ -42,7 +42,7 @@ class ConstellationPoint(object):
         if not self.projected:
             return False
 
-        return [self.projected[PX], self.distance, self.projected[PY]]
+        return np.array([self.projected[PX], self.distance, self.projected[PY]])
 
     def __str__(self):
         return "<ConstellationPoint {:10} ra:{:8} dec:{:10} projection:{}>" \
@@ -109,6 +109,12 @@ class Constellation(object):
         stars in a representation of the constellation
         '''
         self.connections = connections
+
+    def get_connection_positions(self, connection):
+        return self.stars[connection[0]].projected, self.stars[connection[1]].projected
+
+    def get_connection_stars(self, connection):
+        return self.stars[connection[0]], self.stars[connection[1]]
 
     def load_stars_from_sqlite(self, star_db_file, selection=None):
         '''

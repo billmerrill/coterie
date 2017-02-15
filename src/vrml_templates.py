@@ -30,6 +30,22 @@ Transform {
 }
 '''
 
+StarPillar = '''
+Transform {
+    translation $x $y $z
+    children[
+        Shape{
+            appearance Appearance{
+                material Material { }
+            }
+            geometry Cylinder {
+                height $height
+                radius $radius
+            }
+        }
+    ]
+}
+'''
 
 
 TerrainIndexedFaceSet =''' Shape {
